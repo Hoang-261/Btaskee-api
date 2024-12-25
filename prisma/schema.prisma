@@ -1,0 +1,145 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("POSTGRES_PRISMA_URL")
+}
+
+model User {
+  id            Int     @id @default(autoincrement())
+  email         String  @unique
+  name          String
+  phone_number  String
+  address       String?
+  refresh_token String?
+  role          Role    @default(JOB_POSTER)
+
+  password String
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  tasks        Task[]  @relation("TaskAssignee")
+  posted_tasks Task[]  @relation("TaskPoster")
+  order        Order[]
+
+  UserApplySeeker UserApplySeeker[]
+}
+
+model UserApplySeeker {
+  id     Int  @id @default(autoincrement())
+  userId Int
+  status ApplyStatus @default(PENDING) 
+  user   User @relation(fields: [userId], references: [id])
+}
+
+model Task {
+  id             Int           @id @default(autoincrement())
+  name           String
+  description    String
+  status         StatusTask
+  type           TypeTask
+  start_date     DateTime
+  working_time   Int
+  price          Int
+  payment_method PaymentMethod @default(CASH)
+
+  job_poster_id Int
+  job_seeker_id Int?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  job_poster User    @relation("TaskPoster", fields: [job_poster_id], references: [id])
+  job_seeker User?   @relation("TaskAssignee", fields: [job_seeker_id], references: [id])
+  order      Order[]
+}
+
+model Order {
+  id               Int               @id @default(autoincrement())
+  order_date       DateTime
+  total_price      Int
+  task_id          Int
+  user_id          Int
+  order_link       String
+  order_payment_id String
+  status           PaypalOrderStatus @default(CREATED)
+  intent           Intent            @default(CAPTURE)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  task    Task     @relation(fields: [task_id], references: [id])
+  user    User     @relation(fields: [user_id], references: [id])
+  payment Payment?
+}
+
+model Payment {
+  id           Int      @id @default(autoincrement())
+  payment_date DateTime
+  amount       Int
+  order_id     Int
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  order Order? @relation(fields: [order_id], references: [id])
+
+  @@unique([order_id])
+}
+
+enum Role {
+  ADMIN
+  JOB_POSTER
+  JOB_SEEKER
+}
+
+enum StatusTask {
+  CANCELLED
+  COMPLETED
+  IN_PROGRESS
+  PENDING
+  UNPAID
+  HIRING
+}
+
+enum TypeTask {
+  HOUSE_CLEANING
+  DEEP_CLEANING
+  AIR_CONDITIONER_CLEANING
+  CHILDCARE
+  WASHING_MACHINE_CLEANING
+  IRONING
+  HEATER_CLEANING
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  PAYPAL
+}
+
+enum PaypalOrderStatus {
+  CREATED
+  SAVED
+  APPROVED
+  VOIDED
+  COMPLETED
+  PAYER_ACTION_REQUIRED
+}
+
+enum Intent {
+  CAPTURE
+  AUTHORIZE
+}
+
+enum ApplyStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
